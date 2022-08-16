@@ -1,26 +1,14 @@
-/*#define PY_SSIZE_T_CLEAN*/
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include "spkmeans.h"
 
 
-typedef struct{
-    double** eigenVectors;
-    double* eigenValues;
-}jacobiMatrix;
-typedef struct { /* for pivot matrix */
-    double c;
-    double s;
-    int pivotRow;
-    int pivotCul;
-}pivoter ;
-typedef struct {
-    double val;
-    int index;
-} eigenTuple;
+
 
 void exit_func(int idx){
     if(idx == 1){
@@ -48,6 +36,11 @@ void free_mat(char** file_lines,int num_of_lines ){
     }
     free(file_lines);
 }
+void free_jacobi(jacobiMatrix* jacobi,int num_of_lines){
+    free(jacobi->eigenValues);
+    free_matrix(jacobi->eigenVectors,num_of_lines);
+    free(jacobi);
+}
 
 void* safe_malloc(size_t size) {
     void * ptr = malloc(size);
@@ -74,15 +67,46 @@ void is_valid_filename (char* filename){
 }
 
 void check_input_legal (int argc, char** argv){
-    int flag;
     if(argc!=3){
-    }
+
         exit_func(1);
+    }
+
 
     if((strcmp(argv[1],"wam"))!=0 && strcmp(argv[1],"ddg")!=0 && strcmp(argv[1],"lnorm")!=0 && strcmp(argv[1],"jacobi")!=0){
         exit_func(1);
     }
     is_valid_filename(argv[2]);
+}
+void print_matrix(double** matrix,int num_of_lines){/* print square matrix */
+    int i;
+    int j;
+    for (i = 0; i < num_of_lines; ++i) {
+        for (j = 0; j < num_of_lines ; ++j) {
+            if(num_of_lines-1==j){
+                printf("%.4f",matrix[i][j]);
+            }
+            else{
+                printf("%.4f,",matrix[i][j]);
+            }
+        }
+        printf("\n");
+    }
+
+}
+void print_jacobi(jacobiMatrix* jacobi,int num_of_lines){/* print eigen values and eigen vectors */
+    int i;
+    for (i = 0; i <num_of_lines ; ++i) {
+        if(num_of_lines-1==i){
+            printf("%.4f",jacobi->eigenValues[i]);
+        }
+        else{
+            printf("%.4f,",jacobi->eigenValues[i]);
+
+        }
+    }
+    printf("\n");
+    print_matrix(jacobi->eigenVectors,num_of_lines);
 }
 int get_num_lines (char *filename) {
     int count_lines;
@@ -123,9 +147,9 @@ int get_dim (char *filename) {
 
 int* line_lengths (char *filename , int N){
     int* line_lens;
-    int count;
     int index;
     char chr;
+    int count=0;
     FILE *fp = fopen(filename, "r");
     if (fp == NULL){
         exit_func(1);
@@ -185,17 +209,18 @@ double** to_vector_array(char** file_lines, int dimention, int num_of_lines)
             vector_array[i][j]=strtod(ptr, &ptr);
             ptr++;
         }
-        vector_array[i][dimention]=0;
     }
     return vector_array;
 }
 
-void matBuild(double** matrix,int num_of_rows,int num_of_culs) {
+double** matBuild(int num_of_rows,int num_of_culs) {
+    double** matrix;
     int i;
     matrix = (double **) safe_malloc(sizeof(double *) * num_of_rows);
     for (i = 0; i < num_of_rows; ++i) {
         matrix[i] = (double *) safe_calloc(num_of_culs);
     }
+    return  matrix;
 }
 
 double calc_exp_norm(double* vector1,double* vector2,int dim){ /* calc norm with exponent*/
@@ -215,7 +240,7 @@ double** wam(double** matrix,int num_of_rows, int num_of_culs){
     int j;
     double norm;
     double **adjMatrix = NULL;
-    matBuild(adjMatrix,num_of_rows,num_of_rows);
+    adjMatrix = matBuild(num_of_rows,num_of_rows);
     for(i=0;i<num_of_rows; ++i){
         matrix[i][i]=0;
         for ( j =i+1; j <num_of_rows ; ++j) {
@@ -235,7 +260,7 @@ double** ddg(double** adjMatrix,int num_of_rows, int flag){
     int j;
     double sum;
     double** diagMatrix=NULL;
-    matBuild(diagMatrix,num_of_rows,num_of_rows);
+    diagMatrix = matBuild(num_of_rows,num_of_rows);
     for ( i = 0; i <num_of_rows ; ++i) {
         sum=0;
         for ( j = 0; j <num_of_rows ; ++j) {
@@ -254,11 +279,16 @@ double ** lnorm(double** diagMatrix,double** adjMatrix,int num_of_rows){
    int i;
    int j;
    double** lnormMatrix=NULL;
-   matBuild(lnormMatrix,num_of_rows,num_of_rows);
+    lnormMatrix=matBuild(num_of_rows,num_of_rows);
     for ( i = 0; i < num_of_rows; ++i) {
 
         for ( j = 0; j < num_of_rows; ++j) {
-            lnormMatrix[i][j]=1-diagMatrix[i][i]*adjMatrix[i][j]*diagMatrix[j][j];/* each element multiplied by i diag and j diag*/
+            if(i==j){
+                lnormMatrix[i][j]=1-diagMatrix[i][i]*adjMatrix[i][j]*diagMatrix[j][j];/* each element multiplied by i diag and j diag*/
+            }
+            else{
+                lnormMatrix[i][j]=diagMatrix[i][i]*adjMatrix[i][j]*diagMatrix[j][j];
+            }
         }
     }
     return lnormMatrix;
@@ -269,8 +299,6 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         int j;
         int k;
         double max;
-        int pivotRow;
-        int pivotCul;
         double theta;
         double c;
         double t;
@@ -278,6 +306,8 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         int sign;
         double temp;
         double **tempMatrix = NULL;
+        int pivotRow=0;
+        int pivotCul=0;
         max = 0;
         for (i = 0; i < num_of_rows; ++i) { /* finding max element */
             for (j = 0; j < num_of_culs; ++j) {
@@ -305,7 +335,7 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         rotator->s = s;
         rotator->pivotRow = pivotRow;
         rotator->pivotCul = pivotCul;
-        matBuild(tempMatrix, num_of_rows, num_of_culs);
+        tempMatrix=matBuild( num_of_rows, num_of_culs);
         for (i = 0; i < num_of_rows; ++i) { /*V=V*P_s */
             for (j = 0; j < num_of_rows; ++j) {
                 temp = 0;
@@ -397,8 +427,6 @@ return flag;
 
 
 jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
-    int pivotRow;/* sent to P as pointer in order to remember pivotRow,pivotCul */
-    int pivotCul;
     int i;
     double** P;
     int flag;
@@ -417,7 +445,7 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
         P[i][i]=1;
     }
     ret->eigenValues=(double *) safe_calloc(num_of_rows);
-    matBuild(ATag,num_of_rows,num_of_culs);
+    ATag=matBuild(num_of_rows,num_of_culs);
     for ( i = 0; i <100; ++i) {
         PMatrix(P,A,ret->eigenVectors,num_of_rows,num_of_culs,rotator);
         flag=buildATag(ATag,A,rotator,num_of_rows,num_of_culs);
@@ -444,26 +472,30 @@ int cmpfunc (const void * a, const void * b) {/* help function for qsort */
 
 
 }
-
-int getK(jacobiMatrix* eigens,int num_of_rows,int num_of_culs,eigenTuple** arr,k) /* get number of clusters */{
+eigenTuple** buildEigenTuple(jacobiMatrix* eigens,int num_of_rows){
     int i;
-    int j;
+    eigenTuple** egarr;
+    egarr=(eigenTuple**) safe_malloc(sizeof(eigenTuple*)*num_of_rows);
+    for ( i = 0; i <num_of_rows; ++i) {
+        egarr[i]=(eigenTuple*) safe_malloc(sizeof(eigenTuple));
+        egarr[i]->val=eigens->eigenValues[i];
+        egarr[i]->index=i;
+    }
+    return egarr;
+}
+int getK(int num_of_rows,eigenTuple** egarr,int k) /* get number of clusters */{
+    int i;
     double temp;
     double max;
-    int indexMax;
-    arr=(eigenTuple**) safe_malloc(sizeof(eigenTuple*)*num_of_rows);
-    for ( i = 0; i <num_of_rows; ++i) {
-        arr[i]=(eigenTuple*) safe_malloc(sizeof(eigenTuple));
-        arr[i]->val=eigens->eigenValues[i];
-        arr[i]->index=i;
-    }
-    qsort(arr, num_of_rows, sizeof(eigenTuple*), cmpfunc);
+    int indexMax=0;
+
+    qsort(egarr, num_of_rows, sizeof(eigenTuple*), cmpfunc);
     if (k>0){
         return k;
     }
     max=-1;
     for ( i = 0; i <num_of_rows/2; ++i) {
-        temp=arr[i]->val-arr[i+1]->val;
+        temp=egarr[i]->val-egarr[i+1]->val;
         if(temp>max){
             max=temp;
             indexMax=i;
@@ -473,13 +505,13 @@ int getK(jacobiMatrix* eigens,int num_of_rows,int num_of_culs,eigenTuple** arr,k
     return indexMax;
 
 }
-double** getT(jacobiMatrix* eigens,int num_of_rows,int num_of_culs,eigenTuple** arr,int k){/* build T matrix */
+double** getT(jacobiMatrix* eigens,int num_of_rows,eigenTuple** arr,int k){/* build T matrix */
     double** T=NULL;
     int i;
     int j;
     int index;
     int norm;
-    matBuild(T,num_of_rows,k);
+    T=matBuild(num_of_rows,k);
     for (j = 0; j < k; ++j) {
         index=arr[j]->index;
         for (i = 0; i <num_of_rows; ++i) {
@@ -501,10 +533,131 @@ double** getT(jacobiMatrix* eigens,int num_of_rows,int num_of_culs,eigenTuple** 
     }
     return T;
 }
+PyObject* makePyMatrix(double** matrix, int num_of_rows, int num_of_culs){
+
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int j;
+
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    for(i=0; i < num_of_rows; i++){
+        vectorObject= PyList_New(0);
+        if(vectorObject==NULL){
+            exit_func(0);
+        }
+        for(j=0; j < num_of_culs; j++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(matrix[i][j]));
+        }
+        PyList_Append(centObject,vectorObject);
+    }
+    return centObject;
+}
+
+
+PyObject* makePyMatrixFromJacobi(jacobiMatrix* jacobi, int num_of_rows, int num_of_culs){
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int j;
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    vectorObject= PyList_New(0);
+    if(vectorObject==NULL){
+        exit_func(0);
+    }
+    for (i = 0; i < num_of_culs; ++i) {
+        PyList_Append(vectorObject,PyFloat_FromDouble(jacobi->eigenValues[i]));
+    }
+    PyList_Append(centObject,vectorObject);
+
+    for(i=0; i < num_of_rows; i++){
+        vectorObject= PyList_New(0);
+        if(vectorObject==NULL){
+            exit_func(0);
+        }
+        for(j=0; j < num_of_culs; j++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(jacobi->eigenVectors[i][j]));
+        }
+        PyList_Append(centObject,vectorObject);
+    }
+    return centObject;
+
+
+
+}
+
+
+
+static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int func_num, int k){
+    jacobiMatrix * matJacobi;
+    PyObject* centObject;
+    double ** adjMatrix;
+    double ** diagMatrix;
+    double ** lnormMatrix;
+    double** T;
+    eigenTuple ** egarr;
+
+
+    if(func_num==0){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        centObject = makePyMatrix(adjMatrix, num_of_rows,num_of_rows);
+        free_matrix(adjMatrix, num_of_rows);
+        return centObject;
+    }
+    else if (func_num==1){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 0);
+
+        centObject = makePyMatrix(diagMatrix, num_of_rows,num_of_rows);
+
+        free_matrix(adjMatrix, num_of_rows);
+        free_matrix(diagMatrix, num_of_rows);
+        return centObject;
+
+    }
+    else if (func_num==2){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 1);
+        lnormMatrix = lnorm(diagMatrix, adjMatrix , num_of_rows);
+
+        centObject = makePyMatrix(lnormMatrix, num_of_rows,num_of_rows);
+
+        free_matrix(adjMatrix, num_of_rows);
+        free_matrix(diagMatrix, num_of_rows);
+        free_matrix(lnormMatrix, num_of_rows);
+        return  centObject;
+    }
+    else if (func_num==3){
+
+        matJacobi = jacobi(matrix, num_of_rows, num_of_culs);
+
+        centObject = makePyMatrixFromJacobi(matJacobi,num_of_rows,num_of_culs);
+
+        free_jacobi(matJacobi, num_of_rows);
+        return centObject;
+    }
+    else /*if (func_num==4)*/{
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 1);
+        lnormMatrix = lnorm(diagMatrix, adjMatrix , num_of_rows);
+        matJacobi = jacobi(lnormMatrix, num_of_rows, num_of_culs);
+        egarr= buildEigenTuple(matJacobi,num_of_rows);
+        k=getK(num_of_rows,egarr,k);
+        T=getT(matJacobi,num_of_rows,egarr,k);
+        centObject=makePyMatrix(T,num_of_rows,k);
+        return centObject;
+
+    }
+}
 int main(int argc, char** argv){
     jacobiMatrix * matJacobi;
     double** vector_array;
-    double ** matrix;
     double ** adjMatrix;
     double ** diagMatrix;
     double ** lnormMatrix;
@@ -518,47 +671,178 @@ int main(int argc, char** argv){
     lines_lens= line_lengths(argv[2],num_of_lines);
     file_lines= file_to_lines(argv[2],lines_lens, num_of_lines);
     vector_array= to_vector_array(file_lines,dimention,num_of_lines);
+    /*print_matrix(vector_array,num_of_lines);*/
     free(lines_lens);
     free_mat(file_lines,num_of_lines);/*free string matrix*/
     if(strcmp(argv[1],"wam")==0){
-        adjMatrix=wam(vector_array,num_of_lines,dimention)
-        print_matrix(matrix);/*to add */
-        free_matrix(matrix)
+        adjMatrix=wam(vector_array,num_of_lines,dimention);
+        print_matrix(adjMatrix,num_of_lines);
+        free_matrix(adjMatrix,num_of_lines);
     }
     else if (strcmp(argv[1],"ddg")==0){
         adjMatrix=wam(vector_array,num_of_lines,dimention);
-        diagMatrix=ddg(matrix,num_of_lines,0);
-        print_matrix(diagMatrix);
-        free_matrix(matrix);
-        free_matrix(diagMatrix);
+        diagMatrix=ddg(adjMatrix,num_of_lines,0);
+        print_matrix(diagMatrix,num_of_lines);
+        free_matrix(adjMatrix,num_of_lines);
+        free_matrix(diagMatrix,num_of_lines);
 
     }
     else if (strcmp(argv[1],"lnorm")==0){
         adjMatrix=wam(vector_array,num_of_lines,dimention);
-        diagMatrix=ddg(matrix,num_of_lines,1);
-        matrix = lnorm(diagMatrix,matrix,num_of_lines);
-        print_matrix(matrix);
-        free(diagMatrix);
-        free_matrix(matrix);
+        diagMatrix=ddg(adjMatrix,num_of_lines,1);
+        lnormMatrix = lnorm(diagMatrix,adjMatrix ,num_of_lines);
+        print_matrix(lnormMatrix,num_of_lines);
+        free_matrix(adjMatrix,num_of_lines);
+        free_matrix(diagMatrix,num_of_lines);
+        free_matrix(lnormMatrix,num_of_lines);
     }
     else if (strcmp(argv[1],"jacobi")==0){
-        adjMatrix=wam(vector_array,num_of_lines,dimention);
-        diagMatrix=ddg(matrix,num_of_lines,1);
-        lnormMatrix = lnorm(diagMatrix,matrix,num_of_lines);
-        matJacobi = jacobi(lnormMatrix,num_of_lines,dimention);
-        print_jacobi(matJacobi);
-        /*free everything */
+
+        matJacobi = jacobi(vector_array,num_of_lines,dimention);
+        print_jacobi(matJacobi,num_of_lines);
+        free_jacobi(matJacobi,num_of_lines);
+    }
+    free(vector_array);
+    return 0;
+
+}
+/* from here its kmeans!!!!!!++*/
+static double** makeVectorsPlusone(double** vectors, PyObject* pyVectors){
+    int i;
+    int j;
+    int size = PyList_Size(pyVectors);
+    PyObject* vectorObject =  PyList_GetItem(pyVectors, 0);
+    int vectorSize = PyList_Size(vectorObject);
+
+    vectors =(double**) safe_malloc(size*(sizeof(double*)));
+
+    for(i = 0; i < size; i++ ) {
+        vectors[i] = (double *) safe_malloc((vectorSize + 1) * sizeof(double));
+
+    }
+
+    for(i=0;i<size;i++) {
+        vectorObject = PyList_GetItem(pyVectors, i);
+        for (j = 0; j < vectorSize; j++) {
+            vectors[i][j] = PyFloat_AsDouble(PyList_GetItem(vectorObject, j));
+        }
+
+        vectors[i][vectorSize] = 0;
+
+
+    }
+
+    return vectors;
+}
+void calc_norm(double* vector,int dim, double**centroids, int k){
+    double min_dis;
+    double temp_distance;
+    int i;
+    int j;
+    temp_distance=0;
+    min_dis=-1;
+    for (i = 0; i <k; i++) {/* amount of clusters*/
+        for ( j = 0; j < dim; j++) {/* dimention*/
+            temp_distance=pow((vector[j]-centroids[i][j]),2)+temp_distance;
+
+        }
+        if(min_dis==-1||temp_distance<min_dis){
+            min_dis=temp_distance;
+            vector[dim]=i+1;/* update cluster*/
+        }
+        temp_distance=0;
+
+
+    }
+}
+void update_centroids(double** vector_array,int k,int dim,int num_of_vectors, double** centroids){
+    int vector_to_centroid;
+    int i;
+    int j;
+    for (i = 0; i < k; i++) {/* initilize centroids*/
+        for (j = 0; j < dim+1; j++) {
+            centroids[i][j]=0;
+
+        }
+
+    }
+    for ( i = 0; i < num_of_vectors; i++) {
+        vector_to_centroid= (int) vector_array[i][dim]-1;/* which centroid*/
+        centroids[vector_to_centroid][dim]++;
+        for ( j = 0; j < dim; j++) {
+            centroids[vector_to_centroid][j]=centroids[vector_to_centroid][j]+vector_array[i][j];
+
+        }
+
+    }
+    for ( i = 0; i < k; i++) {
+        for ( j = 0; j < dim; j++) {
+            centroids[i][j]=centroids[i][j]/centroids[i][dim];
+
+        }
+
+    }
+}
+int check_convergence(double** vector_array,int dim,int num_of_vectors, double** centroids,double epsilon){
+    double temp_distance;
+    int cluster;
+    int i;
+    int j;
+    epsilon=pow(epsilon,2);
+    temp_distance=0;
+    for ( i = 0; i <num_of_vectors; ++i) {
+
+        cluster=(int) vector_array[i][dim];
+        for ( j = 0; j < dim; j++) {/* dimention*/
+            temp_distance=pow((vector_array[i][j]-centroids[cluster][j]),2)+temp_distance;
+
+        }
+        if(temp_distance>=epsilon){
+            return 0;/* false*/
+        }
+
+        temp_distance=0;
+    }
+    return 1;
+}
+PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num_of_vectors, int max_iter, int eps){
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int ind;
+    int is_converged;
+    for ( ind = 0; ind < max_iter; ind++) {
+        for (i = 0; i < num_of_vectors;i++ ) {
+            calc_norm(vector_array[i],dim,centroids,k);
+
+        }
+
+        update_centroids(vector_array,k,dim,num_of_vectors,centroids);
+        is_converged=check_convergence(vector_array,dim,num_of_vectors,centroids,eps);
+        if(is_converged==1){
+            break;
+        }
+    }
+
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    for(ind=0;ind<k;ind++){
+        vectorObject= PyList_New(0);
+        for(i=0;i<dim;i++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(centroids[ind][i]));
+
+        }
+        PyList_Append(centObject,vectorObject);
     }
 
 
+    free_matrix(vector_array,num_of_vectors);
+    free_matrix(centroids,k);
 
+    return centObject;
 }
-
-
-
-
-
-
 
 
 
