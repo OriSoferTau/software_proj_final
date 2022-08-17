@@ -49,12 +49,10 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs);
 int cmpfunc (const void * a, const void * b);/* help function for qsort */
 int getK(int num_of_rows,eigenTuple** arr,int k); /* get number of clusters */
 double** getT(jacobiMatrix* eigens,int num_of_rows,eigenTuple** arr,int k);/* build T matrix */
-static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int func_num, int k);
-static double** makeVectorsPlusone(double** vectors, PyObject* pyVectors);
-PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num_of_vectors, int max_iter, int eps);
 int check_convergence(double** vector_array,int dim,int num_of_vectors, double** centroids,double epsilon);
 void update_centroids(double** vector_array,int k,int dim,int num_of_vectors, double** centroids);
 void calc_norm(double* vector,int dim, double**centroids, int k);
+eigenTuple** buildEigenTuple(jacobiMatrix* eigens,int num_of_rows);
 int main(int argc, char** argv);
 
 
@@ -64,4 +62,4 @@ int main(int argc, char** argv);
 
 
 
-#endif //SOFTWARE_PROJ_FINAL_SPKMEANS_H
+#endif /*SOFTWARE_PROJ_FINAL_SPKMEANS_H*/

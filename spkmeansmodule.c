@@ -27,6 +27,194 @@ static double** makeVectors(double** vectors, PyObject* pyVectors){
     }
     return vectors;
 }
+PyObject* makePyMatrix(double** matrix, int num_of_rows, int num_of_culs){
+
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int j;
+
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    for(i=0; i < num_of_rows; i++){
+        vectorObject= PyList_New(0);
+        if(vectorObject==NULL){
+            exit_func(0);
+        }
+        for(j=0; j < num_of_culs; j++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(matrix[i][j]));
+        }
+        PyList_Append(centObject,vectorObject);
+    }
+    return centObject;
+}
+
+
+PyObject* makePyMatrixFromJacobi(jacobiMatrix* jacobi, int num_of_rows, int num_of_culs){
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int j;
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    vectorObject= PyList_New(0);
+    if(vectorObject==NULL){
+        exit_func(0);
+    }
+    for (i = 0; i < num_of_culs; ++i) {
+        PyList_Append(vectorObject,PyFloat_FromDouble(jacobi->eigenValues[i]));
+    }
+    PyList_Append(centObject,vectorObject);
+
+    for(i=0; i < num_of_rows; i++){
+        vectorObject= PyList_New(0);
+        if(vectorObject==NULL){
+            exit_func(0);
+        }
+        for(j=0; j < num_of_culs; j++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(jacobi->eigenVectors[i][j]));
+        }
+        PyList_Append(centObject,vectorObject);
+    }
+    return centObject;
+
+
+
+}
+
+
+
+static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int func_num, int k){
+    jacobiMatrix * matJacobi;
+    PyObject* centObject;
+    double ** adjMatrix;
+    double ** diagMatrix;
+    double ** lnormMatrix;
+    double** T;
+    eigenTuple ** egarr;
+
+
+    if(func_num==0){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        centObject = makePyMatrix(adjMatrix, num_of_rows,num_of_rows);
+        free_matrix(adjMatrix, num_of_rows);
+        return centObject;
+    }
+    else if (func_num==1){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 0);
+
+        centObject = makePyMatrix(diagMatrix, num_of_rows,num_of_rows);
+
+        free_matrix(adjMatrix, num_of_rows);
+        free_matrix(diagMatrix, num_of_rows);
+        return centObject;
+
+    }
+    else if (func_num==2){
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 1);
+        lnormMatrix = lnorm(diagMatrix, adjMatrix , num_of_rows);
+
+        centObject = makePyMatrix(lnormMatrix, num_of_rows,num_of_rows);
+
+        free_matrix(adjMatrix, num_of_rows);
+        free_matrix(diagMatrix, num_of_rows);
+        free_matrix(lnormMatrix, num_of_rows);
+        return  centObject;
+    }
+    else if (func_num==3){
+
+        matJacobi = jacobi(matrix, num_of_rows, num_of_culs);
+
+        centObject = makePyMatrixFromJacobi(matJacobi,num_of_rows,num_of_culs);
+
+        free_jacobi(matJacobi, num_of_rows);
+        return centObject;
+    }
+    else /*if (func_num==4)*/{
+        adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        diagMatrix=ddg(adjMatrix, num_of_rows, 1);
+        lnormMatrix = lnorm(diagMatrix, adjMatrix , num_of_rows);
+        matJacobi = jacobi(lnormMatrix, num_of_rows, num_of_culs);
+        egarr= buildEigenTuple(matJacobi,num_of_rows);
+        k=getK(num_of_rows,egarr,k);
+        T=getT(matJacobi,num_of_rows,egarr,k);
+        centObject=makePyMatrix(T,num_of_rows,k);
+        return centObject;
+
+    }
+}
+static double** makeVectorsPlusone(double** vectors, PyObject* pyVectors){
+    int i;
+    int j;
+    int size = PyList_Size(pyVectors);
+    PyObject* vectorObject =  PyList_GetItem(pyVectors, 0);
+    int vectorSize = PyList_Size(vectorObject);
+
+    vectors =(double**) safe_malloc(size*(sizeof(double*)));
+
+    for(i = 0; i < size; i++ ) {
+        vectors[i] = (double *) safe_malloc((vectorSize + 1) * sizeof(double));
+
+    }
+
+    for(i=0;i<size;i++) {
+        vectorObject = PyList_GetItem(pyVectors, i);
+        for (j = 0; j < vectorSize; j++) {
+            vectors[i][j] = PyFloat_AsDouble(PyList_GetItem(vectorObject, j));
+        }
+
+        vectors[i][vectorSize] = 0;
+
+
+    }
+
+    return vectors;
+}
+
+PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num_of_vectors, int max_iter, int eps){
+    PyObject* centObject;
+    PyObject* vectorObject;
+    int i;
+    int ind;
+    int is_converged;
+    for ( ind = 0; ind < max_iter; ind++) {
+        for (i = 0; i < num_of_vectors;i++ ) {
+            calc_norm(vector_array[i],dim,centroids,k);
+
+        }
+
+        update_centroids(vector_array,k,dim,num_of_vectors,centroids);
+        is_converged=check_convergence(vector_array,dim,num_of_vectors,centroids,eps);
+        if(is_converged==1){
+            break;
+        }
+    }
+
+    centObject=PyList_New(0);
+    if(centObject==NULL){
+        exit_func(0);
+    }
+    for(ind=0;ind<k;ind++){
+        vectorObject= PyList_New(0);
+        for(i=0;i<dim;i++){
+            PyList_Append(vectorObject,PyFloat_FromDouble(centroids[ind][i]));
+
+        }
+        PyList_Append(centObject,vectorObject);
+    }
+
+
+    free_matrix(vector_array,num_of_vectors);
+    free_matrix(centroids,k);
+
+    return centObject;
+}
 
 
 static PyObject* mainPy_capi(PyObject *self, PyObject *args){
