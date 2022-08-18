@@ -2,6 +2,7 @@ import myspk as mkm
 import numpy as np
 import pandas as pd
 import sys
+from numpy import linalg as LA
 def exit_func (code):
     if code==1:
         print("Invalid Input!")
@@ -75,6 +76,7 @@ def Kmeans_pp(vectors, k):  # k is number of clusters
         i += 1
     centroids = centroids.tolist()
     vectors = vectors.tolist()
+    print("sending to kmeans")
     centroids = mkm.fit(vectors, centroids, k, dim, n, 300, 0)
     chosen_str= ""
     for i in range(len(rand_cent_list)-1):
@@ -103,13 +105,21 @@ def master(vectors):
         print_matrix(matrix)
     elif(goal=="lnorm"):
         matrix=mkm.mainPy(vectors,len(vectors),len(vectors[0]),2,k)
+        w, v = LA.eigh(matrix)
+        print("eigen vectors:")
+        print(w)
+        print("end of eigen vectors")
+        print("lnorm")
         print_matrix(matrix)
     elif(goal=="jacobi"):
         matrix=mkm.mainPy(vectors,len(vectors),len(vectors[0]),3,k)
         print_matrix(matrix)
     elif(goal=="spk"):
         matrix=mkm.mainPy(vectors,len(vectors),len(vectors[0]),4,k)
-        Kmeans_pp(matrix, len(matrix[0]))
+        print("after spk before clustering printing matrix")
+        print(matrix)
+        print("end of after spk before clustering printing matrix")
+    Kmeans_pp(matrix, len(matrix[0]))
 
 
 

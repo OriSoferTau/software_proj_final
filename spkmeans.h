@@ -54,7 +54,7 @@ void update_centroids(double** vector_array,int k,int dim,int num_of_vectors, do
 void calc_norm(double* vector,int dim, double**centroids, int k);
 eigenTuple** buildEigenTuple(jacobiMatrix* eigens,int num_of_rows);
 int main(int argc, char** argv);
-
+void print_vector_array(double** matrix,int num_of_lines,int num_of_culs);/*delete later*/
 
 
 
