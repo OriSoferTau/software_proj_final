@@ -421,27 +421,33 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     int i;
     int j;
     int flag;
+    double temp;
     for ( i = 0; i <num_of_rows; ++i) {
         for (j = 0; j <num_of_culs ; ++j) {
             if(i!=rotator->pivotRow && i!=rotator->pivotCul && j==rotator->pivotRow){
-                AtagMatrix[i][j]=(rotator->c*A[i][j])-rotator->s*A[i][rotator->pivotCul];
+                printf(" in first if pivotRow: %d pivotCul: %d i: %d j :%d\n",rotator->pivotRow,rotator->pivotCul,i,j);
+                temp=(rotator->c*A[i][j]);
+                temp= temp-rotator->s*A[i][rotator->pivotCul];
+                AtagMatrix[i][j]=temp;
             }
-            else if(j!=rotator->pivotRow && j!=rotator->pivotCul && i==rotator->pivotRow){/*symetry*/
-                AtagMatrix[i][j]=A[j][i];
-            }
+
             else if(i!=rotator->pivotRow && i!=rotator->pivotCul && j==rotator->pivotCul){
-                AtagMatrix[i][j]=(rotator->c*A[i][j])+rotator->s*A[i][rotator->pivotRow];
-            }
-            else if(j!=rotator->pivotRow && j!=rotator->pivotCul && i==rotator->pivotCul){/*symetry*/
-                AtagMatrix[i][j]=AtagMatrix[j][i];
+                printf(" in second  if pivotRow: %d pivotCul: %d i: %d j :%d\n",rotator->pivotRow,rotator->pivotCul,i,j);
+                temp=(rotator->c*A[i][j]);
+                temp=temp+rotator->s*A[i][rotator->pivotRow];
+                AtagMatrix[i][j]=temp;
             }
             else if(i==rotator->pivotRow && j==rotator->pivotRow){
-                AtagMatrix[i][j]=(pow(rotator->c,2)*A[i][i])+ (pow(rotator->s,2)*A[rotator->pivotCul][rotator->pivotCul])
-                                 -(2*rotator->s*rotator->c*A[i][rotator->pivotCul]);
+                temp=(pow(rotator->c,2)*A[i][i]);
+                temp+=(pow(rotator->s,2)*A[rotator->pivotCul][rotator->pivotCul]);
+                temp=temp-(2*rotator->s*rotator->c*A[i][rotator->pivotCul]);
+                AtagMatrix[i][j]=temp;
             }
             else if(i==rotator->pivotCul && j==rotator->pivotCul){
-                AtagMatrix[i][j]=(pow(rotator->s,2)*A[rotator->pivotRow][rotator->pivotRow])+(pow(rotator->c,2)*A[j][j])
-                                 +(2*rotator->s*rotator->c*A[rotator->pivotRow][j]);
+                temp=pow(rotator->s,2)*A[rotator->pivotRow][rotator->pivotRow];
+                temp= temp+pow(rotator->c,2)*A[j][j];
+                temp=temp+(2*rotator->s*rotator->c*A[rotator->pivotRow][j]);
+                AtagMatrix[i][j]=temp;
             }
             else if(i==rotator->pivotRow && j==rotator->pivotCul){
                 AtagMatrix[i][j]=((pow(rotator->c,2)-pow(rotator->s,2))
@@ -605,7 +611,6 @@ int main(int argc, char** argv){
     lines_lens= line_lengths(argv[2],num_of_lines);
     file_lines= file_to_lines(argv[2],lines_lens, num_of_lines);
     vector_array= to_vector_array(file_lines,dimention,num_of_lines);
-    /*print_matrix(vector_array,num_of_lines);*/
     free(lines_lens);
     free_mat(file_lines,num_of_lines);/*free string matrix*/
     if(strcmp(argv[1],"wam")==0){
