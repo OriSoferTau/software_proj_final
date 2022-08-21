@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include "spkmeans.h"
 
-
+/*test to commit 3*/
 
 
 void exit_func(int idx){
