@@ -23,7 +23,7 @@ typedef struct {
 
 
 void exit_func(int idx);
-void free_matrix(double** vector_array,int num_of_lines);/*free matrix */
+void free_matrix(void** matrix, int num_of_lines);/*free matrix */
 void free_mat(char** file_lines,int num_of_lines );
 void free_jacobi(jacobiMatrix* jacobi,int num_of_lines);
 void* safe_malloc(size_t size);

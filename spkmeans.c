@@ -6,7 +6,9 @@
 #include <stdlib.h>
 #include "spkmeans.h"
 
-/*test to commit 3*/
+int memCheck=0;
+int numOfMallocs=0;
+int numOfFrees=0;
 
 
 void exit_func(int idx){
@@ -20,29 +22,30 @@ void exit_func(int idx){
     exit(1);
 }
 
-void free_matrix(double** vector_array,int num_of_lines){/*free matrix */
-    int i;
-    for (i = 0; i < num_of_lines;i++) {
-        free(vector_array[i]);
+void safe_free(void* element_to_free){
+    free(element_to_free);
+    memCheck--;
+    numOfFrees--;
+}
 
-    }
-    free(vector_array);
-}
-void free_mat(char** file_lines,int num_of_lines ){
+void free_matrix(void** matrix, int num_of_lines){/*free matrix */
     int i;
     for (i = 0; i < num_of_lines;i++) {
-        free(file_lines[i]);
+        safe_free(matrix[i]);
     }
-    free(file_lines);
+    safe_free(matrix);
 }
+
 void free_jacobi(jacobiMatrix* jacobi,int num_of_lines){
-    free(jacobi->eigenValues);
-    free_matrix(jacobi->eigenVectors,num_of_lines);
-    free(jacobi);
+    safe_free(jacobi->eigenValues);
+    free_matrix((void **) jacobi->eigenVectors, num_of_lines);
+    safe_free(jacobi);
 }
 
 void* safe_malloc(size_t size) {
     void * ptr = malloc(size);
+    memCheck++;
+    numOfMallocs++;
     if(ptr == NULL){
         exit_func(0);
     }
@@ -51,6 +54,8 @@ void* safe_malloc(size_t size) {
 
 void* safe_calloc(size_t size) {
     void * ptr = calloc(size,sizeof(double));
+    memCheck++;
+    numOfMallocs++;
     if(ptr == NULL){
         exit_func(0);
     }
@@ -340,7 +345,7 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
                 if (i == j) {
                     continue;
                 }
-                if (fabs(A[i][j]) >= max) {
+                if (fabs(A[i][j]) > max) {
                     max = fabs(A[i][j]);
                     pivotRow = i;
                     pivotCul = j;
@@ -349,14 +354,10 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         }
     printf("max is: %f row is: %d cul is: %d\n",max,pivotRow,pivotCul);
     theta = (A[pivotCul][pivotCul] - A[pivotRow][pivotRow]) / (2.0 * A[pivotRow][pivotCul]);
-        if(theta>=0){
-            sign=1;
-        }
-        else{
-            sign=-1;
-        }
+    printf("theta >= 0 = %d \n",theta>=0);
+        sign = theta >= 0 ? 1 : -1;
         t = sign / (fabs(theta) + sqrt(theta*theta + 1));
-        c = 1 / (sqrt(pow(t, 2) + 1));
+        c = 1.0 / (sqrt(t*t + 1));
         s = t * c;
         P[pivotRow][pivotRow] = c;
         P[pivotCul][pivotCul] = c;
@@ -392,7 +393,7 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         P[pivotCul][pivotCul] = 1;
         P[pivotRow][pivotCul] = 0;
         P[pivotCul][pivotRow] = 0;
-        free_matrix(tempMatrix, num_of_rows);
+        free_matrix((void **) tempMatrix, num_of_rows);
 
 
     }
@@ -424,7 +425,7 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     int i;
     int r;
     int j;
-    int checkConvergence;
+    int isConverged;
     double temp;
     double c=rotator->c;
     double s=rotator->s;
@@ -455,7 +456,7 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     printf("Atag matrix:\n");
     print_matrix(AtagMatrix,num_of_rows);
     printf("end of A tag:\n");
-    checkConvergence=checkJacobiConverge(AtagMatrix,A,num_of_rows,num_of_culs);
+    isConverged=checkJacobiConverge(AtagMatrix, A, num_of_rows, num_of_culs);
     for ( i = 0; i <num_of_rows; ++i) {
         for (j = 0; j <num_of_culs ; ++j) {
             A[i][j]=AtagMatrix[i][j];
@@ -464,7 +465,7 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
 
     }
 
-    return checkConvergence;
+    return isConverged;
 
 }
 /*int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,int num_of_culs){
@@ -539,7 +540,7 @@ return flag;
 jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
     int i;
     double** P;
-    int flag;
+    int isConverged;
     pivoter* rotator;
     double **ATag = NULL;
     jacobiMatrix* ret= (jacobiMatrix *) safe_malloc(sizeof(jacobiMatrix));
@@ -559,9 +560,11 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
     for ( i = 0; i <100; ++i) {
         printf("iteration number is: %d\n",i);
         PMatrix(P,A,ret->eigenVectors,num_of_rows,num_of_culs,rotator);
-        flag=buildATag(ATag,A,rotator,num_of_rows,num_of_culs);
-
-        if(flag==1){
+        isConverged=buildATag(ATag, A, rotator, num_of_rows, num_of_culs);
+        printf("A matrix in jacobi func:\n");
+        print_matrix(A,num_of_rows);
+        printf("end of A in jacobi:\n");
+        if(isConverged == 1){
             break;
         }
     }
@@ -572,6 +575,11 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
     printf("jacobi matrix: \n");
     print_jacobi(ret,num_of_rows);
     printf("end of jacobi matrix: \n");
+
+    free_matrix((void **) ATag, num_of_rows);
+    free_matrix((void **) P, num_of_rows);
+
+    safe_free(rotator);
     return ret;
 }
 int cmpfunc (const void * a, const void * b) {/* help function for qsort */
@@ -669,19 +677,19 @@ int main(int argc, char** argv){
     lines_lens= line_lengths(argv[2],num_of_lines);
     file_lines= file_to_lines(argv[2],lines_lens, num_of_lines);
     vector_array= to_vector_array(file_lines,dimention,num_of_lines);
-    free(lines_lens);
-    free_mat(file_lines,num_of_lines);/*free string matrix*/
+    safe_free(lines_lens);
+    free_matrix((void **) file_lines, num_of_lines);/*free string matrix*/
     if(strcmp(argv[1],"wam")==0){
         adjMatrix=wam(vector_array,num_of_lines,dimention);
         print_matrix(adjMatrix,num_of_lines);
-        free_matrix(adjMatrix,num_of_lines);
+        free_matrix((void **) adjMatrix, num_of_lines);
     }
     else if (strcmp(argv[1],"ddg")==0){
         adjMatrix=wam(vector_array,num_of_lines,dimention);
         diagMatrix=ddg(adjMatrix,num_of_lines,0);
         print_matrix(diagMatrix,num_of_lines);
-        free_matrix(adjMatrix,num_of_lines);
-        free_matrix(diagMatrix,num_of_lines);
+        free_matrix((void **) adjMatrix, num_of_lines);
+        free_matrix((void **) diagMatrix, num_of_lines);
 
     }
     else if (strcmp(argv[1],"lnorm")==0){
@@ -689,19 +697,20 @@ int main(int argc, char** argv){
         diagMatrix=ddg(adjMatrix,num_of_lines,1);
         lnormMatrix = lnorm(diagMatrix,adjMatrix ,num_of_lines);
         print_matrix(lnormMatrix,num_of_lines);
-        free_matrix(adjMatrix,num_of_lines);
-        free_matrix(diagMatrix,num_of_lines);
-        free_matrix(lnormMatrix,num_of_lines);
+        free_matrix((void **) adjMatrix, num_of_lines);
+        free_matrix((void **) diagMatrix, num_of_lines);
+        free_matrix((void **) lnormMatrix, num_of_lines);
     }
     else if (strcmp(argv[1],"jacobi")==0){
-        printf("this is input matrix:\n");
+/*        printf("this is input matrix:\n");
         print_matrix(vector_array,num_of_lines);
-        printf("end of input matrix:\n");
+        printf("end of input matrix:\n");*/
         matJacobi = jacobi(vector_array,num_of_lines,dimention);
         print_jacobi(matJacobi,num_of_lines);
         free_jacobi(matJacobi,num_of_lines);
     }
-    free(vector_array);
+    free_matrix((void **) vector_array, num_of_lines);
+    printf("memcheck= %d num of mallocs= %d num of frees= %d",memCheck,numOfMallocs,numOfFrees);
     return 0;
 
 }
