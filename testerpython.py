@@ -5,7 +5,8 @@ import sys
 def read_input(file_name1):
     file1 = pd.read_csv(file_name1,sep=",",header=None)
     vectors = file1.to_numpy()
-    vectors=vectors.tolist()
+    print(vectors)
+    #vectors=vectors.tolist()
     return vectors
 
 
@@ -37,16 +38,9 @@ def print_matrix(matrix):
     print(cent_str)
 
 
-#v=read_input(sys.argv[1])
-v=[[-5.056, 11.011],
-   [-6.409, -7.962],
-   [5.694, 9.606],
-   [6.606, 9.396],
-   [-6.772, -5.727],
-   [-4.498, 8.399],
-   [-4.985, 9.076],
-   [4.424, 8.819],
-   [-7.595, -7.211]]
+v=read_input(sys.argv[1])
+w,v=np.linalg.eigh(v)
+print(w)
+#print(w)
 
-x=(wamcheck(v))
-print_matrix(x)
+
