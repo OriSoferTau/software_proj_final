@@ -76,7 +76,6 @@ def Kmeans_pp(vectors, k):  # k is number of clusters
         i += 1
     centroids = centroids.tolist()
     vectors = vectors.tolist()
-    print("sending to kmeans")
     centroids = mkm.fit(vectors, centroids, k, dim, n, 300, 0)
     chosen_str= ""
     for i in range(len(rand_cent_list)-1):
@@ -106,10 +105,7 @@ def master(vectors):
     elif(goal=="lnorm"):
         matrix=mkm.mainPy(vectors,len(vectors),len(vectors[0]),2,k)
         w, v = LA.eigh(matrix)
-        print("eigen vectors:")
-        print(w)
-        print("end of eigen vectors")
-        print("lnorm")
+
         print_matrix(matrix)
     elif(goal=="jacobi"):
         matrix=mkm.mainPy(vectors,len(vectors),len(vectors[0]),3,k)

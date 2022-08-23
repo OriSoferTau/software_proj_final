@@ -13,7 +13,6 @@ static double** makeVectors(double** vectors, PyObject* pyVectors){
     int size = PyList_Size(pyVectors);
     PyObject* vectorObject =  PyList_GetItem(pyVectors, 0);
     int vectorSize = PyList_Size(vectorObject);
-    printf("in make vectors\n");
     vectors =(double**) safe_malloc(size*(sizeof(double*)));
     for(i = 0; i < size; i++ ) {
         vectors[i] = (double *) safe_malloc((vectorSize) * sizeof(double));
@@ -24,7 +23,6 @@ static double** makeVectors(double** vectors, PyObject* pyVectors){
             vectors[i][j] = PyFloat_AsDouble(PyList_GetItem(vectorObject, j));
         }
     }
-    printf("finished make vectors\n");
     return vectors;
 }
 PyObject* makePyMatrix(double** matrix, int num_of_rows, int num_of_culs){
@@ -97,7 +95,6 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
     double** T;
     eigenTuple ** egarr;
 
-    printf("start of mainpy\n");
     if(func_num==0){
         adjMatrix=wam(matrix, num_of_rows, num_of_culs);
         centObject = makePyMatrix(adjMatrix, num_of_rows,num_of_rows);
@@ -145,7 +142,6 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
         k=getK(num_of_rows,egarr,k);
         T=getT(matJacobi,num_of_rows,egarr,k);
         centObject=makePyMatrix(T,num_of_rows,k);
-       /* print_matrix(T,k);*/
         return centObject;
 
     }
@@ -209,7 +205,6 @@ PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num
         PyList_Append(centObject,vectorObject);
     }
 
-    printf("before free\n");
     free_matrix(vector_array,num_of_vectors);
     free_matrix(centroids,k);
 

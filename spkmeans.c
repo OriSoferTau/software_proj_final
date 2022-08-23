@@ -86,15 +86,12 @@ void print_matrix(double** matrix,int num_of_lines){/* print square matrix */
     int i;
     int j;
     for (i = 0; i < num_of_lines; ++i) {
-        for (j = 0; j < num_of_lines ; ++j) {
-            if(num_of_lines-1==j){
-                printf("%.4f",matrix[i][j]);
-            }
-            else{
+        for (j = 0; j < num_of_lines-1 ; ++j) {
                 printf("%.4f,",matrix[i][j]);
-            }
+
         }
-        printf("\n");
+
+            printf("%.4f\n",matrix[i][num_of_lines-1]);
     }
 
 }
@@ -142,7 +139,6 @@ int get_num_lines (char *filename) {
         chr = fgetc(fp);
     }
     fclose(fp);
-    printf("count_lines: %d\n",count_lines);
     return count_lines;
 }
 int get_dim (char *filename) {
@@ -161,7 +157,6 @@ int get_dim (char *filename) {
         chr = fgetc(fp);
     }
     fclose(fp);
-    printf("count_commas: %d\n",count_commas);
     return count_commas;
 }
 
@@ -230,7 +225,6 @@ double** to_vector_array(char** file_lines, int dimention, int num_of_lines)
             ptr++;
         }
     }
-    print_matrix(vector_array,num_of_lines);
     return vector_array;
 }
 
@@ -247,10 +241,10 @@ double** matBuild(int num_of_rows,int num_of_culs) {
 double calc_exp_norm(double* vector1,double* vector2,int dim){ /* calc norm with exponent*/
     int i;
     double norm=0;
-    printf("dim: %d\n",dim);
+
     for (i = 0; i <dim ; ++i) {
         norm=norm+pow((vector1[i]-vector2[i]),2);
-        printf("vector1[i]: %f vector[2][i]: %f i: %d norm: %f\n", vector1[i],vector2[i],i,norm);
+
     }
     norm=sqrt(norm);
     norm=-norm/2;
@@ -263,11 +257,7 @@ double** wam(double** matrix,int num_of_rows, int num_of_culs){
     int j;
     double norm;
     double **adjMatrix = NULL;
-    printf("this is matrix: \n");
-    print_vector_array(matrix,num_of_rows,num_of_culs);
-    printf("end of matrix");
-    printf("rows: %d culs: %d\n",num_of_rows,num_of_culs);
-    adjMatrix = matBuild(num_of_rows,num_of_rows);
+    adjMatrix=matBuild(num_of_rows,num_of_rows);
     for(i=0;i<num_of_rows; ++i){
         adjMatrix[i][i]=0;
         for ( j =i+1; j <num_of_rows ; ++j) {
@@ -318,12 +308,20 @@ double ** lnorm(double** diagMatrix,double** adjMatrix,int num_of_rows){
             }
         }
     }
-    printf("lnorm matrix: \n");
-    print_matrix(lnormMatrix,num_of_rows);
-    printf("end of lnorm matrix\n");
     return lnormMatrix;
 }
-
+int isDiagonal(double**matrix,int num_of_rows){
+    int i;
+    int j;
+    for ( i = 0; i <num_of_rows ; ++i) {
+        for ( j = 0; j < num_of_rows ; ++j) {
+            if (i!=j && matrix[i][j]!=0){
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
 void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,pivoter* rotator) {/* create rotation matrix */
         int i;
         int j;
@@ -352,9 +350,8 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
                 }
             }
         }
-    printf("max is: %f row is: %d cul is: %d\n",max,pivotRow,pivotCul);
+
     theta = (A[pivotCul][pivotCul] - A[pivotRow][pivotRow]) / (2.0 * A[pivotRow][pivotCul]);
-    printf("theta >= 0 = %d \n",theta>=0);
         sign = theta >= 0 ? 1 : -1;
         t = sign / (fabs(theta) + sqrt(theta*theta + 1));
         c = 1.0 / (sqrt(t*t + 1));
@@ -363,8 +360,6 @@ void PMatrix(double**P,double** A,double** V,int num_of_rows,int num_of_culs,piv
         P[pivotCul][pivotCul] = c;
         P[pivotRow][pivotCul] = s;
         P[pivotCul][pivotRow] = -s;
-        printf("A[pivotCul][pivotCul]: %f A[pivotRow][pivotRow] %f A[pivotRow][pivotCul]: %f\n",A[pivotCul][pivotCul],A[pivotRow][pivotRow],A[pivotRow][pivotCul] );
-        printf("this is c: %f s: %f theta: %f sign: %d t: %f \n",c,s,theta,sign,t);
         rotator->c = c;
         rotator->s = s;
         rotator->pivotRow = pivotRow;
@@ -431,7 +426,6 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     double s=rotator->s;
     int row=rotator->pivotRow;
     int cul=rotator->pivotCul;
-    printf("this is c: %f s: %f row: %d cul: %d  \n",c,s,row,cul);
     for ( i = 0; i <num_of_rows; ++i) {
         for (j = 0; j < num_of_culs; ++j) {
             AtagMatrix[i][j] = A[i][j];
@@ -450,12 +444,6 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     AtagMatrix[cul][cul]=s*s*A[row][row]+c*c*A[cul][cul]+2*s*c*A[row][cul];
     AtagMatrix[row][cul]=0;
     AtagMatrix[cul][row]=0;
-    printf("A matrix:\n");
-    print_matrix(A,num_of_rows);
-    printf("end of A :\n");
-    printf("Atag matrix:\n");
-    print_matrix(AtagMatrix,num_of_rows);
-    printf("end of A tag:\n");
     isConverged=checkJacobiConverge(AtagMatrix, A, num_of_rows, num_of_culs);
     for ( i = 0; i <num_of_rows; ++i) {
         for (j = 0; j <num_of_culs ; ++j) {
@@ -468,73 +456,7 @@ int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,i
     return isConverged;
 
 }
-/*int buildATag(double** AtagMatrix,double **A,pivoter* rotator, int num_of_rows,int num_of_culs){
-    int i;
-    int j;
-    int flag;
-    double temp;
-    printf("A matrix start\n");
-    print_matrix(A,num_of_rows);
-    printf("A matrix end\n");
 
-    for ( i = 0; i <num_of_rows; ++i) {
-        for (j = 0; j <num_of_culs ; ++j) {
-            if(i!=rotator->pivotRow && i!=rotator->pivotCul && j==rotator->pivotRow){
-                temp=(rotator->c*A[i][j]);
-                temp= temp-(rotator->s*A[i][rotator->pivotCul]);
-                AtagMatrix[i][j]=temp;
-                AtagMatrix[j][i]=temp;
-            }
-
-            else if(i!=rotator->pivotRow && i!=rotator->pivotCul && j==rotator->pivotCul){
-                temp=(rotator->c*A[i][j]);
-                temp=temp+(rotator->s*A[i][rotator->pivotRow]);
-                AtagMatrix[i][j]=temp;
-                AtagMatrix[j][i]=temp;
-
-            }
-            else if(i==rotator->pivotRow && j==rotator->pivotRow){
-                temp=(pow(rotator->c,2)*A[i][i]);
-                temp+=(pow(rotator->s,2)*A[rotator->pivotCul][rotator->pivotCul]);
-                temp=temp-(2*rotator->s*rotator->c*A[i][rotator->pivotCul]);
-                AtagMatrix[i][j]=temp;
-            }
-            else if(i==rotator->pivotCul && j==rotator->pivotCul){
-                temp=pow(rotator->s,2)*A[rotator->pivotRow][rotator->pivotRow];
-                temp= temp+pow(rotator->c,2)*A[j][j];
-                temp=temp+(2*rotator->s*rotator->c*A[rotator->pivotRow][j]);
-                AtagMatrix[i][j]=temp;
-
-            }
-            else if(i==rotator->pivotRow && j==rotator->pivotCul){
-                AtagMatrix[i][j]=((pow(rotator->c,2)-pow(rotator->s,2))
-                        *A[i][j])+((rotator->s*rotator->c)*
-                        (A[i][i]-A[j][j]));
-                printf("AtagMatrix[i][j]: %f\n",AtagMatrix[i][j]);
-                AtagMatrix[i][j]=0;
-                AtagMatrix[j][i]=0;
-
-            }
-            else{
-                if(i==rotator->pivotCul || i==rotator->pivotRow || j==rotator->pivotCul || j==rotator->pivotRow){
-                    continue;
-                }
-                AtagMatrix[i][j]=A[i][j];
-            }
-        }
-    }
-
-    flag=checkJacobiConverge(AtagMatrix,A,num_of_rows,num_of_culs);
-    for ( i = 0; i <num_of_rows; ++i) {
-        for (j = 0; j <num_of_culs ; ++j) {
-            A[i][j]=AtagMatrix[i][j];
-        }
-
-
-    }
-
-return flag;
-}*/
 
 
 jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
@@ -558,12 +480,12 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
     ret->eigenValues=(double *) safe_calloc(num_of_rows);
     ATag=matBuild(num_of_rows,num_of_culs);
     for ( i = 0; i <100; ++i) {
-        printf("iteration number is: %d\n",i);
+        if (isDiagonal(A,num_of_rows)==1){
+            break;
+        }
         PMatrix(P,A,ret->eigenVectors,num_of_rows,num_of_culs,rotator);
         isConverged=buildATag(ATag, A, rotator, num_of_rows, num_of_culs);
-        printf("A matrix in jacobi func:\n");
-        print_matrix(A,num_of_rows);
-        printf("end of A in jacobi:\n");
+
         if(isConverged == 1){
             break;
         }
@@ -572,9 +494,7 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
         ret->eigenValues[i]=A[i][i];
 
     }
-    printf("jacobi matrix: \n");
-    print_jacobi(ret,num_of_rows);
-    printf("end of jacobi matrix: \n");
+
 
     free_matrix((void **) ATag, num_of_rows);
     free_matrix((void **) P, num_of_rows);
@@ -710,7 +630,7 @@ int main(int argc, char** argv){
         free_jacobi(matJacobi,num_of_lines);
     }
     free_matrix((void **) vector_array, num_of_lines);
-    printf("memcheck= %d num of mallocs= %d num of frees= %d",memCheck,numOfMallocs,numOfFrees);
+    /*printf("memcheck= %d num of mallocs= %d num of frees= %d",memCheck,numOfMallocs,numOfFrees);*/
     return 0;
 
 }
