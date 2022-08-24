@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <stdlib.h>
 #include "spkmeans.h"
 
 int memCheck=0;
@@ -204,6 +203,7 @@ char** file_to_lines (char *filename, int *lines_lens, int num_of_lines){
         lines_array[i] = safe_malloc((lines_lens[i]+1)*sizeof(char));
         fscanf(fp, "%s", lines_array[i]);
     }
+    fclose(fp);
     return lines_array;
 }
 double** to_vector_array(char** file_lines, int dimention, int num_of_lines)

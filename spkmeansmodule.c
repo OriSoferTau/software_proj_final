@@ -7,13 +7,24 @@
 #include <stdlib.h>
 #include "spkmeans.h"
 
+void free_eigTup(eigenTuple** egarr,int num_of_rows){
+    int i;
+    for ( i = 0; i <num_of_rows ; ++i) {
+        safe_free(egarr[i]);
+    }
+    safe_free(egarr);
+}
+
+
 static double** makeVectors(double** vectors, PyObject* pyVectors){
     int i;
     int j;
     int size = PyList_Size(pyVectors);
+
     PyObject* vectorObject =  PyList_GetItem(pyVectors, 0);
     int vectorSize = PyList_Size(vectorObject);
-    vectors =(double**) safe_malloc(size*(sizeof(double*)));
+
+    vectors = (double**) safe_malloc(size*(sizeof(double*)));
     for(i = 0; i < size; i++ ) {
         vectors[i] = (double *) safe_malloc((vectorSize) * sizeof(double));
     }
@@ -23,6 +34,7 @@ static double** makeVectors(double** vectors, PyObject* pyVectors){
             vectors[i][j] = PyFloat_AsDouble(PyList_GetItem(vectorObject, j));
         }
     }
+
     return vectors;
 }
 PyObject* makePyMatrix(double** matrix, int num_of_rows, int num_of_culs){
@@ -98,7 +110,7 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
     if(func_num==0){
         adjMatrix=wam(matrix, num_of_rows, num_of_culs);
         centObject = makePyMatrix(adjMatrix, num_of_rows,num_of_rows);
-        free_matrix(adjMatrix, num_of_rows);
+        free_matrix((void**) adjMatrix, num_of_rows);
         return centObject;
     }
     else if (func_num==1){
@@ -107,8 +119,8 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
 
         centObject = makePyMatrix(diagMatrix, num_of_rows,num_of_rows);
 
-        free_matrix(adjMatrix, num_of_rows);
-        free_matrix(diagMatrix, num_of_rows);
+        free_matrix((void**) adjMatrix, num_of_rows);
+        free_matrix((void**) diagMatrix, num_of_rows);
         return centObject;
 
     }
@@ -119,9 +131,9 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
 
         centObject = makePyMatrix(lnormMatrix, num_of_rows,num_of_rows);
 
-        free_matrix(adjMatrix, num_of_rows);
-        free_matrix(diagMatrix, num_of_rows);
-        free_matrix(lnormMatrix, num_of_rows);
+        free_matrix((void**) adjMatrix, num_of_rows);
+        free_matrix((void**) diagMatrix, num_of_rows);
+        free_matrix((void**) lnormMatrix, num_of_rows);
         return  centObject;
     }
     else if (func_num==3){
@@ -142,6 +154,14 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
         k=getK(num_of_rows,egarr,k);
         T=getT(matJacobi,num_of_rows,egarr,k);
         centObject=makePyMatrix(T,num_of_rows,k);
+
+        free_matrix((void**) adjMatrix, num_of_rows);
+        free_matrix((void**) diagMatrix, num_of_rows);
+        free_matrix((void**) lnormMatrix, num_of_rows);
+        free_jacobi(matJacobi, num_of_rows);
+        free_matrix((void**) egarr, num_of_rows);
+        free_matrix((void**) T, num_of_rows);
+
         return centObject;
 
     }
@@ -205,8 +225,8 @@ PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num
         PyList_Append(centObject,vectorObject);
     }
 
-    free_matrix(vector_array,num_of_vectors);
-    free_matrix(centroids,k);
+    free_matrix((void**) vector_array,num_of_vectors);
+    free_matrix((void**) centroids,k);
 
     return centObject;
 }
@@ -223,6 +243,10 @@ static PyObject* mainPy_capi(PyObject *self, PyObject *args){
         return NULL;
     }
     matrix = makeVectors(matrix, matrix_obj);
+
+
+
+
 
     return Py_BuildValue("O",  mainPy(matrix, num_of_rows, num_of_culs, func_num, k));
 
