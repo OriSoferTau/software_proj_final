@@ -111,8 +111,12 @@ def master(vectors):
         matrix = mkm.mainPy(vectors, len(vectors), len(vectors[0]), 3, k)
         print_matrix(matrix)
     elif goal == "spk":
+        # print('before mkm')
         matrix = mkm.mainPy(vectors, len(vectors), len(vectors[0]), 4, k)
+        # print('matrix after jacobi before kmeans\n')
         # print_matrix(matrix)
+        # print('end of matrix \n')
+        # print('b4 kmeans #########################$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$%%%%%%%%%%%%%%%%%%%%%%%%%%%^^^^^^^^^^^^^^^^^^^^^^^^^^&&&&&&&&&&&&&&&&&&&&&&&&&&&&&********************')
         Kmeans_pp(matrix, len(matrix[0]))
 
 

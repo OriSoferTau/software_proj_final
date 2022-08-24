@@ -575,9 +575,7 @@ double** getT(jacobiMatrix* eigens,int num_of_rows,eigenTuple** arr,int k){/* bu
 
         }
     }
-    printf("this is T matrix after norm\n");
-    print_vector_array(T,num_of_rows,k);
-    printf("this is T matrix after norm\n");
+
     return T;
 }
 

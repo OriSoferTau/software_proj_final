@@ -146,10 +146,13 @@ static PyObject* mainPy(double** matrix, int num_of_rows, int num_of_culs, int f
         return centObject;
     }
     else /*if (func_num==4)*/{
+
         adjMatrix=wam(matrix, num_of_rows, num_of_culs);
+        /*printf("after wam\n");*/
         diagMatrix=ddg(adjMatrix, num_of_rows, 1);
+
         lnormMatrix = lnorm(diagMatrix, adjMatrix , num_of_rows);
-        matJacobi = jacobi(lnormMatrix, num_of_rows, num_of_culs);
+        matJacobi = jacobi(lnormMatrix, num_of_rows, num_of_rows);  /* ori: changed to num_of_rows! instead num_of_culs*/
         egarr= buildEigenTuple(matJacobi,num_of_rows);
         k=getK(num_of_rows,egarr,k);
         T=getT(matJacobi,num_of_rows,egarr,k);
