@@ -54,6 +54,7 @@ def probabilities(dls, sum_dls):
 
 
 def Kmeans_pp(vectors, k):  # k is number of clusters
+    print(f'k: {k}')
     vectors = np.array([np.array(vector) for vector in vectors])
     n = vectors.shape[0]  # this is number of vectors
     dim = vectors.shape[1]

@@ -503,8 +503,9 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
     return ret;
 }
 int cmpfunc (const void * a, const void * b) {/* help function for qsort */
-    eigenTuple* one=(eigenTuple*) a;
-    eigenTuple* two=(eigenTuple*) b;
+    eigenTuple* one=*(eigenTuple**) a;
+    eigenTuple* two=*(eigenTuple**) b;
+    printf("one: %f two: %f \n",one->val,two->val);
     if (one->val>two->val){
         return -1;
     }
@@ -537,9 +538,12 @@ int getK(int num_of_rows,eigenTuple** egarr,int k) /* get number of clusters */{
         return k;
     }
     max=-1;
+    printf("eigen1: %f eigen2: %f\n",egarr[0]->val,egarr[1]->val);
+    printf("num of rows: %d\n",num_of_rows);
     for ( i = 0; i <num_of_rows/2; ++i) {
         temp=egarr[i]->val-egarr[i+1]->val;
         if(temp>max){
+            printf("indexmax: %d\n",indexMax);
             max=temp;
             indexMax=i+1;
         }
