@@ -54,8 +54,10 @@ def probabilities(dls, sum_dls):
 
 
 def Kmeans_pp(vectors, k):  # k is number of clusters
-    print(f'k: {k}')
+    #print("clusters: ",k)
+    #print("vectors_list: \n",vectors)
     vectors = np.array([np.array(vector) for vector in vectors])
+    #print("vectors numpy: \n",vectors)
     n = vectors.shape[0]  # this is number of vectors
     dim = vectors.shape[1]
     rand_cent_list=[]
@@ -81,7 +83,7 @@ def Kmeans_pp(vectors, k):  # k is number of clusters
         i += 1
     centroids = centroids.tolist()
     vectors = vectors.tolist()
-    centroids = mkm.fit(vectors, centroids, k, dim, n, 300, 0)
+    centroids = mkm.fit(vectors, centroids, k, dim, n, 3, 0)
     chosen_str = ""
     for i in range(len(rand_cent_list)-1):
         chosen_str = chosen_str + str(rand_cent_list[i]) + ","

@@ -505,7 +505,6 @@ jacobiMatrix * jacobi(double** A,int num_of_rows,int num_of_culs){
 int cmpfunc (const void * a, const void * b) {/* help function for qsort */
     eigenTuple* one=*(eigenTuple**) a;
     eigenTuple* two=*(eigenTuple**) b;
-    printf("one: %f two: %f \n",one->val,two->val);
     if (one->val>two->val){
         return -1;
     }
@@ -538,12 +537,9 @@ int getK(int num_of_rows,eigenTuple** egarr,int k) /* get number of clusters */{
         return k;
     }
     max=-1;
-    printf("eigen1: %f eigen2: %f\n",egarr[0]->val,egarr[1]->val);
-    printf("num of rows: %d\n",num_of_rows);
     for ( i = 0; i <num_of_rows/2; ++i) {
         temp=egarr[i]->val-egarr[i+1]->val;
         if(temp>max){
-            printf("indexmax: %d\n",indexMax);
             max=temp;
             indexMax=i+1;
         }
@@ -567,19 +563,20 @@ double** getT(jacobiMatrix* eigens,int num_of_rows,eigenTuple** arr,int k){/* bu
 
     }
 
-    for (j = 0; j <k ; ++j) {
+    for (i = 0; i <num_of_rows ; ++i) {
         norm=0;
-        for (i = 0; i <num_of_rows; ++i) {
+        for (j = 0; j <k; ++j) {
             norm=norm+pow(T[i][j],2);
-
-        }
+            }
         norm=sqrt(norm);
-        for (i = 0; i <num_of_rows; ++i) {
+        for (j = 0; j <k; ++j) {
+            if (norm==0) {
+                continue;
+            }
             T[i][j]=T[i][j]/norm;
 
         }
     }
-
     return T;
 }
 
@@ -650,6 +647,7 @@ void calc_norm(double* vector,int dim, double**centroids, int k){
             temp_distance=pow((vector[j]-centroids[i][j]),2)+temp_distance;
 
         }
+        temp_distance=sqrt(temp_distance);
         if(min_dis==-1||temp_distance<min_dis){
             min_dis=temp_distance;
             vector[dim]=i+1;/* update cluster*/
@@ -663,6 +661,9 @@ void update_centroids(double** vector_array,int k,int dim,int num_of_vectors, do
     int vector_to_centroid;
     int i;
     int j;
+    /*printf("this is vector array:\n");
+    print_vector_array(vector_array,num_of_vectors,dim+1);
+    printf("end of vector array:\n");*/
     for (i = 0; i < k; i++) {/* initilize centroids*/
         for (j = 0; j < dim+1; j++) {
             centroids[i][j]=0;
@@ -679,6 +680,9 @@ void update_centroids(double** vector_array,int k,int dim,int num_of_vectors, do
         }
 
     }
+    /*printf("centroids in c: \n");
+    print_vector_array(centroids,k,dim+1);
+    printf("end of centroids in c:\n");*/
     for ( i = 0; i < k; i++) {
         for ( j = 0; j < dim; j++) {
             centroids[i][j]=centroids[i][j]/centroids[i][dim];

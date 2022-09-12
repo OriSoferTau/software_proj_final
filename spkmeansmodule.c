@@ -203,11 +203,15 @@ PyObject* fit(double** vector_array, double** centroids, int k, int dim, int num
     int i;
     int ind;
     int is_converged;
+
     for ( ind = 0; ind < max_iter; ind++) {
         for (i = 0; i < num_of_vectors;i++ ) {
             calc_norm(vector_array[i],dim,centroids,k);
 
         }
+        /*printf("centroids in c: \n");
+        print_vector_array(centroids,k,dim);
+        printf("end of centroids in c:\n");*/
         update_centroids(vector_array,k,dim,num_of_vectors,centroids);
         is_converged=check_convergence(vector_array,dim,num_of_vectors,centroids,eps);
         if(is_converged==1){
